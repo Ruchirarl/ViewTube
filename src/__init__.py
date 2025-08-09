@@ -11,5 +11,4 @@ __email__ = "your.email@example.com"
 
 from .data_collection import *
 from .analysis import *
-from .visualization import *
-from .utils import * 
+from .utils import *
