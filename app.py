@@ -801,29 +801,43 @@ def display_results():
         st.subheader("● View Distribution")
         st.markdown("How many views do most videos get?")
         
-        # Log-scale histogram for skewed views
-        fig = px.histogram(
-            processed_data, 
-            x='view_count',
-            nbins=15,
-            title="Distribution of Video Views (Log Scale)",
-            labels={'view_count': 'Number of Views', 'count': 'Number of Videos'},
-            color_discrete_sequence=['#FF6666'],
-            opacity=0.8
-        )
-        fig.update_traces(hovertemplate='Views: %{x:,}<br>Count: %{y}<extra></extra>')
-        fig.update_layout(
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(color='white', size=14),
-            title_font_size=18,
-            title_font_color='white',
-            height=400,
-            hoverlabel=dict(bgcolor='rgba(26,26,26,0.95)', font_size=14, font_color='white')
-        )
-        fig.update_xaxes(type='log', gridcolor='rgba(255,255,255,0.1)', zerolinecolor='rgba(255,255,255,0.1)')
-        fig.update_yaxes(gridcolor='rgba(255,255,255,0.1)', zerolinecolor='rgba(255,255,255,0.1)')
-        st.plotly_chart(fig, use_container_width=True)
+        # Ensure numeric, filter non-positive for log scale
+        df_hist = processed_data.copy()
+        df_hist['view_count'] = pd.to_numeric(df_hist['view_count'], errors='coerce')
+        df_hist = df_hist[df_hist['view_count'].notna()]
+        
+        if df_hist.empty:
+            st.info("No view data available to plot.")
+        else:
+            # Decide whether to use log scale (if distribution is highly skewed)
+            min_v = df_hist['view_count'][df_hist['view_count'] > 0].min() if (df_hist['view_count'] > 0).any() else None
+            max_v = df_hist['view_count'].max()
+            use_log = bool(min_v) and (max_v / max(min_v, 1)) > 20
+
+            fig = px.histogram(
+                df_hist[df_hist['view_count'] > 0] if use_log else df_hist,
+                x='view_count',
+                nbins=30,
+                title="Distribution of Video Views" + (" (Log Scale)" if use_log else ""),
+                labels={'view_count': 'Number of Views', 'count': 'Number of Videos'},
+                color_discrete_sequence=['#FF6666'],
+                opacity=0.85
+            )
+            fig.update_traces(hovertemplate='Views: %{x:,}<br>Count: %{y}<extra></extra>')
+            fig.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='white', size=14),
+                title_font_size=18,
+                title_font_color='white',
+                height=400,
+                hoverlabel=dict(bgcolor='rgba(26,26,26,0.95)', font_size=14, font_color='white')
+            )
+            if use_log:
+                fig.update_xaxes(type='log')
+            fig.update_xaxes(gridcolor='rgba(255,255,255,0.1)', zerolinecolor='rgba(255,255,255,0.1)')
+            fig.update_yaxes(gridcolor='rgba(255,255,255,0.1)', zerolinecolor='rgba(255,255,255,0.1)')
+            st.plotly_chart(fig, use_container_width=True)
     
     with col2:
         st.subheader("▼ Views vs Engagement")
