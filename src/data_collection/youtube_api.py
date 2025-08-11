@@ -69,10 +69,18 @@ class YouTubeDataCollector:
                     pageToken=next_page_token
                 ).execute()
 
-                video_ids.extend([item['id']['videoId'] for item in search_response.get('items', [])])
+                # Safely extract videoIds; skip any malformed items
+                for item in search_response.get('items', []) or []:
+                    id_obj = item.get('id') or {}
+                    vid = id_obj.get('videoId')
+                    if vid:
+                        video_ids.append(vid)
                 next_page_token = search_response.get('nextPageToken')
                 if not next_page_token:
                     break
+            # If nothing extracted, provide a clear message
+            if not video_ids:
+                raise ValueError("No video results returned by the API for this query. Try a broader query or fewer results.")
             
             # Get detailed video information
             for i in range(0, len(video_ids), 50):  # Process in batches of 50
@@ -83,13 +91,13 @@ class YouTubeDataCollector:
                     id=','.join(batch_ids)
                 ).execute()
                 
-                for video in videos_response['items']:
+                for video in videos_response.get('items', []) or []:
                     video_info = self._extract_video_info(video)
                     video_data.append(video_info)
                     
                     # Store category mapping
-                    category_id = video['snippet']['categoryId']
-                    category_name = video['snippet'].get('categoryTitle', f'Category {category_id}')
+                    category_id = video.get('snippet', {}).get('categoryId', '')
+                    category_name = video.get('snippet', {}).get('categoryTitle', f'Category {category_id}')
                     category_map[category_id] = category_name
                 
                 # Light rate limiting
