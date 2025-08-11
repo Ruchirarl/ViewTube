@@ -569,6 +569,11 @@ def display_results():
     # Render all sections (no navigation buttons)
     def show(section_key: str) -> bool:
         return True
+
+    # Helper to avoid duplicate element IDs for charts
+    def next_plot_key() -> str:
+        import time as _t
+        return f"plt_{_t.time_ns()}"
     
     # Key Metrics Cards at the top
     if show('Key'):
@@ -742,7 +747,7 @@ def display_results():
                 title_font_color='white',
                 height=400
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, key=next_plot_key())
     st.markdown("---")
     
     # 1. Top Performing Videos (Most Important)
@@ -838,7 +843,7 @@ def display_results():
         )
         fig.update_xaxes(tickformat='.0%', gridcolor='rgba(255,255,255,0.1)', zerolinecolor='rgba(255,255,255,0.1)')
         fig.update_yaxes(gridcolor='rgba(255,255,255,0.1)', zerolinecolor='rgba(255,255,255,0.1)')
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, key=next_plot_key())
 
     with col_cr:
         st.subheader("◆ Comment Rate Analysis")
