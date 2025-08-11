@@ -566,25 +566,9 @@ def display_results():
     processed_data = st.session_state.processed_data
     analysis_results = st.session_state.analysis_results
     
-    # Section navigation buttons (no tabs). Defaults to 'All'.
-    nav_labels = [
-        ("All", "All"),
-        ("Key Metrics", "Key"),
-        ("Top Videos", "Top"),
-        ("Engagement", "Engagement"),
-        ("Views", "Views"),
-        ("Time", "Time"),
-        ("Keywords", "Keywords"),
-        ("Sentiment", "Sentiment"),
-        ("Summary", "Summary"),
-    ]
-    cols = st.columns(len(nav_labels))
-    for (label, key), c in zip(nav_labels, cols):
-        if c.button(label):
-            st.session_state.current_section = key
-    current_section = st.session_state.get('current_section', 'All')
+    # Render all sections (no navigation buttons)
     def show(section_key: str) -> bool:
-        return current_section == 'All' or current_section == section_key
+        return True
     
     # Key Metrics Cards at the top
     if show('Key'):
@@ -681,6 +665,85 @@ def display_results():
     
     # Analysis sections ordered by importance
     st.markdown("---")
+
+    # Sentiment Analysis FIRST (if available)
+    if 'comments_data' in st.session_state:
+        st.header("▲ Comment Sentiment Analysis")
+        st.markdown("What do viewers think about these videos?")
+        comments_data = st.session_state.comments_data
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader("◇ Sentiment Distribution")
+            if 'overall_sentiment' in comments_data.columns:
+                sentiment_counts = comments_data['overall_sentiment'].value_counts()
+                fig = px.pie(
+                    values=sentiment_counts.values,
+                    names=sentiment_counts.index,
+                    title="Comment Sentiment Distribution",
+                    color_discrete_sequence=['#FF0000', '#FF4444', '#CC0000']
+                )
+                fig.update_layout(
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    font=dict(color='white', size=14),
+                    title_font_size=18,
+                    title_font_color='white',
+                    height=480,
+                )
+                fig.update_traces(hovertemplate='%{label}: %{percent} (%{value})<extra></extra>')
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning("Sentiment categories not available.")
+        with col2:
+            st.subheader("◆ Sentiment Scores")
+            if 'vader_compound' in comments_data.columns:
+                fig = px.histogram(
+                    comments_data,
+                    x='vader_compound',
+                    nbins=20,
+                    title="Sentiment Score Distribution",
+                    labels={'vader_compound': 'Sentiment Score', 'count': 'Number of Comments'},
+                    color_discrete_sequence=['#FF6666'],
+                    opacity=0.8
+                )
+                fig.update_layout(
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    font=dict(color='white', size=14),
+                    title_font_size=18,
+                    title_font_color='white',
+                    height=480
+                )
+                fig.update_xaxes(gridcolor='rgba(255,255,255,0.1)', zerolinecolor='rgba(255,255,255,0.1)')
+                fig.update_yaxes(gridcolor='rgba(255,255,255,0.1)', zerolinecolor='rgba(255,255,255,0.1)')
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning("Sentiment scores not available.")
+        # Sentiment by video
+        if 'video_title' in comments_data.columns and 'vader_compound' in comments_data.columns:
+            st.markdown("---")
+            st.subheader("◐ Sentiment by Video")
+            st.markdown("Which videos have the most positive comments?")
+            video_sentiment = comments_data.groupby('video_title')['vader_compound'].mean().sort_values(ascending=False)
+            fig = px.bar(
+                x=video_sentiment.values,
+                y=video_sentiment.index,
+                orientation='h',
+                title="Average Sentiment by Video",
+                labels={'x': 'Average Sentiment Score', 'y': 'Video Title'},
+                color=video_sentiment.values,
+                color_continuous_scale='Viridis'
+            )
+            fig.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='white', size=12),
+                title_font_size=18,
+                title_font_color='white',
+                height=400
+            )
+            st.plotly_chart(fig, use_container_width=True)
+    st.markdown("---")
     
     # 1. Top Performing Videos (Most Important)
     if show('Top'):
@@ -699,15 +762,13 @@ def display_results():
     display_data['comment_count'] = display_data['comment_count'].apply(format_number)
     display_data['engagement_rate'] = display_data['engagement_rate'].apply(lambda x: f"{x:.2%}")
     
-    # Show thumbnails and clickable links
-    st.dataframe(
-        display_data.assign(
-            title=lambda d: d.apply(lambda r: f"[" + r['title'][:60] + "](" + r['url'] + ")", axis=1),
-        )[[
-            'thumbnail','title','view_count','like_count','comment_count','engagement_rate'
-        ]],
-        use_container_width=True
-    )
+    # Show thumbnails grid with clickable titles
+    grid_cols = st.columns(2)
+    for idx, (_, row) in enumerate(display_data.iterrows()):
+        with grid_cols[idx % 2]:
+            st.image(row['thumbnail'], use_column_width=True)
+            st.markdown(f"[{row['title'][:70]}]({row['url']})")
+            st.caption(f"Views: {row['view_count']} · Likes: {row['like_count']} · Comments: {row['comment_count']} · Eng: {row['engagement_rate']}")
     
     st.markdown("---")
     
@@ -828,43 +889,57 @@ def display_results():
         st.subheader("● View Distribution")
         st.markdown("How many views do most videos get?")
         
-        # Ensure numeric, filter non-positive for log scale
-        df_hist = processed_data.copy()
-        df_hist['view_count'] = pd.to_numeric(df_hist['view_count'], errors='coerce')
-        df_hist = df_hist[df_hist['view_count'].notna()]
-        
-        if df_hist.empty:
+        # Ensure numeric
+        df_views = processed_data.copy()
+        df_views['view_count'] = pd.to_numeric(df_views['view_count'], errors='coerce')
+        df_views = df_views[df_views['view_count'].notna()]
+
+        if df_views.empty:
             st.info("No view data available to plot.")
         else:
-            # Decide whether to use log scale (if distribution is highly skewed)
-            min_v = df_hist['view_count'][df_hist['view_count'] > 0].min() if (df_hist['view_count'] > 0).any() else None
-            max_v = df_hist['view_count'].max()
-            use_log = bool(min_v) and (max_v / max(min_v, 1)) > 20
-
-            fig = px.histogram(
-                df_hist[df_hist['view_count'] > 0] if use_log else df_hist,
-                x='view_count',
-                nbins=30,
-                title="Distribution of Video Views" + (" (Log Scale)" if use_log else ""),
-                labels={'view_count': 'Number of Views', 'count': 'Number of Videos'},
-                color_discrete_sequence=['#FF6666'],
-                opacity=0.85
-            )
-            fig.update_traces(hovertemplate='Views: %{x:,}<br>Count: %{y}<extra></extra>')
-            fig.update_layout(
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='white', size=14),
-                title_font_size=18,
-                title_font_color='white',
-                height=400,
-                hoverlabel=dict(bgcolor='rgba(26,26,26,0.95)', font_size=14, font_color='white')
-            )
-            if use_log:
-                fig.update_xaxes(type='log')
-            fig.update_xaxes(gridcolor='rgba(255,255,255,0.1)', zerolinecolor='rgba(255,255,255,0.1)')
-            fig.update_yaxes(gridcolor='rgba(255,255,255,0.1)', zerolinecolor='rgba(255,255,255,0.1)')
-            st.plotly_chart(fig, use_container_width=True)
+            # Prefer ECDF; fallback to histogram if ECDF fails
+            try:
+                fig = px.ecdf(
+                    df_views,
+                    x='view_count',
+                    title="Cumulative Distribution of Video Views",
+                    labels={'view_count': 'Number of Views', 'y': 'Cumulative Fraction'},
+                )
+                fig.update_traces(line_color='#FF6666')
+                fig.update_layout(
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    font=dict(color='white', size=14),
+                    title_font_size=18,
+                    title_font_color='white',
+                    height=400,
+                )
+                fig.update_xaxes(gridcolor='rgba(255,255,255,0.1)', zerolinecolor='rgba(255,255,255,0.1)')
+                fig.update_yaxes(gridcolor='rgba(255,255,255,0.1)', zerolinecolor='rgba(255,255,255,0.1)', tickformat='.0%')
+                st.plotly_chart(fig, use_container_width=True)
+            except Exception:
+                # Fallback: simple histogram (linear scale)
+                fig = px.histogram(
+                    df_views,
+                    x='view_count',
+                    nbins=30,
+                    title="Distribution of Video Views",
+                    labels={'view_count': 'Number of Views', 'count': 'Number of Videos'},
+                    color_discrete_sequence=['#FF6666'],
+                    opacity=0.85
+                )
+                fig.update_traces(hovertemplate='Views: %{x:,}<br>Count: %{y}<extra></extra>')
+                fig.update_layout(
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    font=dict(color='white', size=14),
+                    title_font_size=18,
+                    title_font_color='white',
+                    height=400,
+                )
+                fig.update_xaxes(gridcolor='rgba(255,255,255,0.1)', zerolinecolor='rgba(255,255,255,0.1)')
+                fig.update_yaxes(gridcolor='rgba(255,255,255,0.1)', zerolinecolor='rgba(255,255,255,0.1)')
+                st.plotly_chart(fig, use_container_width=True)
     
     with col2:
         st.subheader("▼ Views vs Engagement")
