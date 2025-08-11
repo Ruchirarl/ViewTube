@@ -671,84 +671,7 @@ def display_results():
     # Analysis sections ordered by importance
     st.markdown("---")
 
-    # Sentiment Analysis FIRST (if available)
-    if 'comments_data' in st.session_state:
-        st.header("▲ Comment Sentiment Analysis")
-        st.markdown("What do viewers think about these videos?")
-        comments_data = st.session_state.comments_data
-        col1, col2 = st.columns(2)
-        with col1:
-            st.subheader("◇ Sentiment Distribution")
-            if 'overall_sentiment' in comments_data.columns:
-                sentiment_counts = comments_data['overall_sentiment'].value_counts()
-                fig = px.pie(
-                    values=sentiment_counts.values,
-                    names=sentiment_counts.index,
-                    title="Comment Sentiment Distribution",
-                    color_discrete_sequence=['#FF0000', '#FF4444', '#CC0000']
-                )
-                fig.update_layout(
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    font=dict(color='white', size=14),
-                    title_font_size=18,
-                    title_font_color='white',
-                    height=480,
-                )
-                fig.update_traces(hovertemplate='%{label}: %{percent} (%{value})<extra></extra>')
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.warning("Sentiment categories not available.")
-        with col2:
-            st.subheader("◆ Sentiment Scores")
-            if 'vader_compound' in comments_data.columns:
-                fig = px.histogram(
-                    comments_data,
-                    x='vader_compound',
-                    nbins=20,
-                    title="Sentiment Score Distribution",
-                    labels={'vader_compound': 'Sentiment Score', 'count': 'Number of Comments'},
-                    color_discrete_sequence=['#FF6666'],
-                    opacity=0.8
-                )
-                fig.update_layout(
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    font=dict(color='white', size=14),
-                    title_font_size=18,
-                    title_font_color='white',
-                    height=480
-                )
-                fig.update_xaxes(gridcolor='rgba(255,255,255,0.1)', zerolinecolor='rgba(255,255,255,0.1)')
-                fig.update_yaxes(gridcolor='rgba(255,255,255,0.1)', zerolinecolor='rgba(255,255,255,0.1)')
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.warning("Sentiment scores not available.")
-        # Sentiment by video
-        if 'video_title' in comments_data.columns and 'vader_compound' in comments_data.columns:
-            st.markdown("---")
-            st.subheader("◐ Sentiment by Video")
-            st.markdown("Which videos have the most positive comments?")
-            video_sentiment = comments_data.groupby('video_title')['vader_compound'].mean().sort_values(ascending=False)
-            fig = px.bar(
-                x=video_sentiment.values,
-                y=video_sentiment.index,
-                orientation='h',
-                title="Average Sentiment by Video",
-                labels={'x': 'Average Sentiment Score', 'y': 'Video Title'},
-                color=video_sentiment.values,
-                color_continuous_scale='Viridis'
-            )
-            fig.update_layout(
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='white', size=12),
-                title_font_size=18,
-                title_font_color='white',
-                height=400
-            )
-            st.plotly_chart(fig, use_container_width=True, key=next_plot_key())
-    st.markdown("---")
+    # (Sentiment will appear later in its original place)
     
     # 1. Top Performing Videos (Most Important)
     if show('Top'):
@@ -767,13 +690,15 @@ def display_results():
     display_data['comment_count'] = display_data['comment_count'].apply(format_number)
     display_data['engagement_rate'] = display_data['engagement_rate'].apply(lambda x: f"{x:.2%}")
     
-    # Show thumbnails grid with clickable titles
-    grid_cols = st.columns(2)
-    for idx, (_, row) in enumerate(display_data.iterrows()):
-        with grid_cols[idx % 2]:
-            st.image(row['thumbnail'], use_column_width=True)
-            st.markdown(f"[{row['title'][:70]}]({row['url']})")
-            st.caption(f"Views: {row['view_count']} · Likes: {row['like_count']} · Comments: {row['comment_count']} · Eng: {row['engagement_rate']}")
+    # Back to table with small thumbnails
+    # Build markdown with HTML img tag for small thumbs
+    table_df = display_data.copy()
+    table_df['thumbnail'] = table_df['thumbnail'].apply(lambda src: f"<img src='{src}' width='80'>")
+    table_df['title'] = table_df.apply(lambda r: f"<a href='{r['url']}' target='_blank'>{r['title'][:70]}</a>", axis=1)
+    st.write(
+        table_df[['thumbnail','title','view_count','like_count','comment_count','engagement_rate']].to_html(escape=False, index=False),
+        unsafe_allow_html=True
+    )
     
     st.markdown("---")
     
