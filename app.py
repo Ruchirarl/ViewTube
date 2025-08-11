@@ -383,6 +383,9 @@ def main():
 
             with st.spinner("Collecting and analyzing data..."):
                 try:
+                    # Store inputs for reporting
+                    st.session_state.search_query = search_query
+                    st.session_state.max_results = max_results
                     collect_and_analyze_data(
                         api_key, search_query, max_results, 
                         True  # Always include sentiment analysis
@@ -563,8 +566,29 @@ def display_results():
     processed_data = st.session_state.processed_data
     analysis_results = st.session_state.analysis_results
     
+    # Section navigation buttons (no tabs). Defaults to 'All'.
+    nav_labels = [
+        ("All", "All"),
+        ("Key Metrics", "Key"),
+        ("Top Videos", "Top"),
+        ("Engagement", "Engagement"),
+        ("Views", "Views"),
+        ("Time", "Time"),
+        ("Keywords", "Keywords"),
+        ("Sentiment", "Sentiment"),
+        ("Summary", "Summary"),
+    ]
+    cols = st.columns(len(nav_labels))
+    for (label, key), c in zip(nav_labels, cols):
+        if c.button(label):
+            st.session_state.current_section = key
+    current_section = st.session_state.get('current_section', 'All')
+    def show(section_key: str) -> bool:
+        return current_section == 'All' or current_section == section_key
+    
     # Key Metrics Cards at the top
-    st.header("▲ Key Metrics")
+    if show('Key'):
+        st.header("▲ Key Metrics")
     
     # First row of metrics
     col1, col2, col3, col4 = st.columns(4)
@@ -659,8 +683,9 @@ def display_results():
     st.markdown("---")
     
     # 1. Top Performing Videos (Most Important)
-    st.header("■ Top Performing Videos")
-    st.markdown("Here are the videos with the highest view counts:")
+    if show('Top'):
+        st.header("■ Top Performing Videos")
+        st.markdown("Here are the videos with the highest view counts:")
     
     # Top videos by views
     top_videos = processed_data.nlargest(10, 'view_count')[['video_id','title', 'view_count', 'like_count', 'comment_count', 'engagement_rate']]
@@ -687,8 +712,9 @@ def display_results():
     st.markdown("---")
     
     # 2. Engagement Analysis (Second Most Important)
-    st.header("🎯 Engagement Analysis")
-    st.markdown("How well do these videos engage their audience?")
+    if show('Engagement'):
+        st.header("🎯 Engagement Analysis")
+        st.markdown("How well do these videos engage their audience?")
     
     # Engagement metrics in cards
     col1, col2, col3 = st.columns(3)
@@ -792,8 +818,9 @@ def display_results():
     st.markdown("---")
     
     # 3. View Analysis (Third Most Important)
-    st.header("📈 View Analysis")
-    st.markdown("How do views perform across these videos?")
+    if show('Views'):
+        st.header("📈 View Analysis")
+        st.markdown("How do views perform across these videos?")
     
     col1, col2 = st.columns(2)
     
@@ -873,8 +900,9 @@ def display_results():
     st.markdown("---")
     
     # 4. Time Analysis (Fourth Most Important)
-    st.header("◯ Time Analysis")
-    st.markdown("How do timing factors affect video performance?")
+    if show('Time'):
+        st.header("◯ Time Analysis")
+        st.markdown("How do timing factors affect video performance?")
     
     col1, col2 = st.columns(2)
     
@@ -979,13 +1007,16 @@ def display_results():
             day_names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
             top_slots['slot'] = top_slots.apply(lambda r: f"{day_names[int(r['published_day_of_week'])]} @ {int(r['published_hour']):02d}:00", axis=1)
             st.dataframe(top_slots[['slot', score_col]].rename(columns={score_col: 'expected_avg'}), use_container_width=True)
+            # Save for report
+            st.session_state.report_top_slots = top_slots[['slot', score_col]].rename(columns={score_col: 'expected_avg'})
     
 
     
     # 5. Keyword Analysis (N-gram lift)
-    st.markdown("---")
-    st.header("◆ Keyword Analysis")
-    st.markdown("Which words or phrases in titles/descriptions/tags associate with higher views per day?")
+    if show('Keywords'):
+        st.markdown("---")
+        st.header("◆ Keyword Analysis")
+        st.markdown("Which words or phrases in titles/descriptions/tags associate with higher views per day?")
 
     with st.expander("Configure keyword analysis"):
         col_cfg1, col_cfg2, col_cfg3 = st.columns(3)
@@ -1033,6 +1064,8 @@ def display_results():
         kw_df = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
         if not kw_df.empty:
+            # Save for report
+            st.session_state.report_kw = kw_df.copy()
             c1, c2 = st.columns([2, 1])
             with c1:
                 fig = px.bar(
@@ -1087,9 +1120,10 @@ def display_results():
         st.warning(f"Keyword analysis unavailable: {e}")
 
     # 6. Sentiment Analysis Section
-    st.markdown("---")
-    st.header("▲ Comment Sentiment Analysis")
-    st.markdown("What do viewers think about these videos?")
+    if show('Sentiment'):
+        st.markdown("---")
+        st.header("▲ Comment Sentiment Analysis")
+        st.markdown("What do viewers think about these videos?")
     
     if 'comments_data' in st.session_state:
         comments_data = st.session_state.comments_data
@@ -1188,7 +1222,8 @@ def display_results():
     st.markdown("---")
     
     # 7. Summary Section
-    st.header("📋 Analysis Summary")
+    if show('Summary'):
+        st.header("📋 Analysis Summary")
     
     col1, col2 = st.columns(2)
     
@@ -1215,6 +1250,87 @@ def display_results():
     
     st.markdown("---")
     st.markdown("**Analysis completed!** Use the configuration above to analyze different search queries.")
+
+    # Download Report (HTML)
+    st.subheader("⬇ Download Report (HTML)")
+    def build_html_report():
+        import html
+        q = html.escape(str(st.session_state.get('search_query', '')))
+        mr = st.session_state.get('max_results', 0)
+        total_videos = len(processed_data)
+        avg_views = processed_data['view_count'].mean()
+        avg_eng = processed_data['engagement_rate'].mean()
+        avg_dur_min = processed_data['duration_seconds'].mean() / 60 if 'duration_seconds' in processed_data.columns else None
+        top_table = processed_data.nlargest(10, 'view_count')[['title','view_count','like_count','comment_count','engagement_rate']].copy()
+        def fmt_num(x):
+            try:
+                return f"{int(x):,}"
+            except:
+                return str(x)
+        top_table['view_count'] = top_table['view_count'].apply(fmt_num)
+        top_table['like_count'] = top_table['like_count'].apply(fmt_num)
+        top_table['comment_count'] = top_table['comment_count'].apply(fmt_num)
+        top_table['engagement_rate'] = top_table['engagement_rate'].apply(lambda x: f"{x:.2%}")
+        top_html_rows = "".join([
+            f"<tr><td>{html.escape(str(r['title']))}</td><td>{r['view_count']}</td><td>{r['like_count']}</td><td>{r['comment_count']}</td><td>{r['engagement_rate']}</td></tr>"
+            for _, r in top_table.iterrows()
+        ])
+        kw_df = st.session_state.get('report_kw', None)
+        kw_html = ""
+        if kw_df is not None and not kw_df.empty:
+            kw_part = kw_df.sort_values(['lift','count'], ascending=[False,False]).head(15)[['ngram','count','lift']]
+            kw_html_rows = "".join([
+                f"<tr><td>{html.escape(str(r['ngram']))}</td><td>{int(r['count'])}</td><td>{r['lift']:.2f}×</td></tr>"
+                for _, r in kw_part.iterrows()
+            ])
+            kw_html = f"""
+            <h3>Top Keyword Opportunities</h3>
+            <table border='1' cellpadding='6' cellspacing='0'>
+              <tr><th>n‑gram</th><th>Support</th><th>Lift</th></tr>
+              {kw_html_rows}
+            </table>
+            """
+        slots_df = st.session_state.get('report_top_slots', None)
+        slots_html = ""
+        if slots_df is not None and not slots_df.empty:
+            slot_rows = "".join([f"<tr><td>{html.escape(str(r['slot']))}</td><td>{r['expected_avg']:.1f}</td></tr>" for _, r in slots_df.iterrows()])
+            slots_html = f"""
+            <h3>Recommended Publish Windows</h3>
+            <table border='1' cellpadding='6' cellspacing='0'>
+              <tr><th>Slot</th><th>Expected Avg</th></tr>
+              {slot_rows}
+            </table>
+            """
+        html_report = f"""
+        <html><head><meta charset='utf-8'><title>ViewTube Report</title></head>
+        <body style='font-family:Arial, sans-serif;'>
+          <h1>ViewTube Report</h1>
+          <p><b>Query:</b> {q} &nbsp; <b>Videos requested:</b> {mr} &nbsp; <b>Analyzed:</b> {total_videos}</p>
+          <h2>Key Metrics</h2>
+          <ul>
+            <li>Average views: {avg_views:,.0f}</li>
+            <li>Average engagement: {avg_eng:.2%}</li>
+            <li>Average duration: {avg_dur_min:.1f} minutes</li>
+          </ul>
+          <h2>Top Performing Videos</h2>
+          <table border='1' cellpadding='6' cellspacing='0'>
+            <tr><th>Title</th><th>Views</th><th>Likes</th><th>Comments</th><th>Engagement</th></tr>
+            {top_html_rows}
+          </table>
+          {kw_html}
+          {slots_html}
+          <p style='margin-top:24px;'>Generated by ViewTube.</p>
+        </body></html>
+        """
+        return html_report
+
+    report_html = build_html_report()
+    st.download_button(
+        label="Download HTML Report",
+        data=report_html,
+        file_name="viewtube_report.html",
+        mime="text/html"
+    )
 
 if __name__ == "__main__":
     main() 
