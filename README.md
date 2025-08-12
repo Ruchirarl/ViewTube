@@ -14,9 +14,15 @@ An interactive Streamlit dashboard that collects, analyzes, and visualizes YouTu
 ## Live Demo
 
 <p align="center">
-  <a href="https://your-app.streamlit.app" target="_blank"><img alt="Dashboard Preview" src="assets/dashboard-preview.png" width="850"></a>
+  <img width="1896" height="869" alt="Dashboard Preview" src="https://github.com/user-attachments/assets/f258e6a9-5865-4ec6-96b1-07394412dc77" />
   <br/>
-  <a href="https://your-app.streamlit.app" target="_blank"><b>▶ Open the live dashboard</b></a>
+  <a href="[https://your-app.streamlit.app](https://viewtube.streamlit.app/)" target="_blank"><b>▶ Open the live dashboard</b></a>
+</p>
+
+## Sample Report
+
+<p align="center">
+  <img width="1903" height="991" alt="image" src="https://github.com/user-attachments/assets/067aa789-4bc0-46c0-8a75-fec117a1d878" />
 </p>
 
 ## Overview
@@ -31,11 +37,12 @@ This project is a full, end‑to‑end YouTube analytics dashboard that helps yo
 ## What’s Inside
 
 - Streamlit UI with a YouTube classic theme for high readability
-- Plotly interactive visuals (treemap, beeswarm, Sankey, histograms, scatter)
+- Plotly interactive visuals
 - YouTube Data API v3 ingestion with pagination (up to 200 videos/run)
 - Processing: text cleaning, engagement metrics, views/day, time features (hour, weekday)
 - Sentiment analysis: VADER/TextBlob, plus per‑video distributions
 - Keyword lift and topic recommendations (opportunity score)
+- One‑click HTML report export (executive summary: highlights, KPIs, top videos, categories, publish windows)
 - Caching for faster re‑runs and fewer API calls; Streamlit Cloud–ready (Secrets for API key)
 
 ## Metrics & Formulas
@@ -124,11 +131,8 @@ In the app:
 
 ## Configuration
 
-Set your API key via `.env` or the UI input:
-
-```
-YOUTUBE_API_KEY=your_youtube_api_key
-```
+- On Streamlit Cloud: set `YOUTUBE_API_KEY` in Secrets (Settings → Secrets).
+- Local development: optionally create a `.env` file with:
 
 ## Analytics Overview
 
@@ -138,7 +142,8 @@ YOUTUBE_API_KEY=your_youtube_api_key
 - Views: View distribution (log), views vs engagement
 - Time: Duration distribution, duration vs views, upload hours; recommended publish windows
 - Keywords: n‑gram lift (treemap) with opportunity score and estimated uplift
-- Sentiment: Distribution, scores, per‑video sentiment; category → sentiment Sankey
+- Sentiment: Distribution, scores, per‑video sentiment; category
+- Report: One‑click HTML report export with highlights, top videos, category performance, and best publish windows
 
 ## Notebook
 
