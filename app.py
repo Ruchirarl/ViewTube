@@ -247,6 +247,9 @@ st.markdown("""
         background-color: var(--card-background);
         color: var(--text-primary);
     }
+    .dataframe thead th {
+        text-align: center !important;
+    }
     
     /* Button styling */
     .stButton > button {
@@ -899,7 +902,7 @@ def display_results():
                 st.plotly_chart(fig, use_container_width=True)
     
     with col2:
-        st.subheader("▼ Views vs Engagement")
+        st.subheader("🔁 Views vs Engagement")
         st.markdown("Do videos with more views get more engagement?")
         
         # Bubble chart for Views vs Engagement
@@ -1038,7 +1041,8 @@ def display_results():
             top_slots = slot_scores.sort_values(score_col, ascending=False).head(5)
             day_names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
             top_slots['slot'] = top_slots.apply(lambda r: f"{day_names[int(r['published_day_of_week'])]} @ {int(r['published_hour']):02d}:00", axis=1)
-            st.dataframe(top_slots[['slot', score_col]].rename(columns={score_col: 'expected_avg'}), use_container_width=True)
+            slots_disp = top_slots[['slot', score_col]].rename(columns={score_col: 'Expected Avg', 'slot': 'Slot'})
+            st.dataframe(slots_disp, use_container_width=True)
             # Save for report
             st.session_state.report_top_slots = top_slots[['slot', score_col]].rename(columns={score_col: 'expected_avg'})
     
@@ -1133,19 +1137,23 @@ def display_results():
             kw_display['opportunity_score'] = (kw_display['lift'] * kw_display['count']).round(2)
             kw_display['estimated_uplift_%'] = ((kw_display['lift'] - 1.0) * 100.0).round(1)
             cols_to_show = [col for col in ['n','ngram','count','lift','estimated_uplift_%','opportunity_score'] if col in kw_display.columns]
-            st.dataframe(
-                kw_display.sort_values(['opportunity_score','lift','count'], ascending=[False, False, False])[cols_to_show].head(15),
-                use_container_width=True
-            )
+            kw_show = kw_display.sort_values(['opportunity_score','lift','count'], ascending=[False, False, False])[cols_to_show].head(15)
+            # Title-case headers for display
+            kw_show = kw_show.rename(columns={
+                'n': 'N', 'ngram': 'N-gram', 'count': 'Count', 'lift': 'Lift',
+                'estimated_uplift_%': 'Estimated Uplift %', 'opportunity_score': 'Opportunity Score'
+            })
+            st.dataframe(kw_show, use_container_width=True)
             st.markdown("#### n-gram table")
-            st.dataframe(
-                kw_df.assign(
-                    avg_metric=lambda d: d["avg_metric"].round(1),
-                    baseline_avg=lambda d: d["baseline_avg"].round(1),
-                    lift=lambda d: d["lift"].round(2),
-                ),
-                use_container_width=True,
-            )
+            kw_tbl = kw_df.assign(
+                avg_metric=lambda d: d["avg_metric"].round(1),
+                baseline_avg=lambda d: d["baseline_avg"].round(1),
+                lift=lambda d: d["lift"].round(2),
+            ).rename(columns={
+                'ngram': 'N-gram', 'count': 'Count', 'avg_metric': 'Avg Metric',
+                'baseline_avg': 'Baseline Avg', 'lift': 'Lift'
+            })
+            st.dataframe(kw_tbl, use_container_width=True)
         else:
             st.info("No n-grams met the minimum support or baseline is zero.")
     except Exception as e:
