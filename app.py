@@ -694,8 +694,8 @@ def display_results():
         st.header("🏆 Top Performing Videos")
         st.markdown("Here are the videos with the highest view counts:")
     
-    # Top videos by views
-    top_videos = processed_data.nlargest(10, 'view_count')[['Video_id','Title', 'View_count', 'Like_count', 'Comment_count', 'Engagement_rate']]
+    # Top videos by views (use actual dataframe column names)
+    top_videos = processed_data.nlargest(10, 'view_count')[['video_id','title', 'view_count', 'like_count', 'comment_count', 'engagement_rate']]
     
     # Format the data for display
     display_data = top_videos.copy()
@@ -711,9 +711,18 @@ def display_results():
     table_df = display_data.copy()
     table_df['thumbnail'] = table_df['thumbnail'].apply(lambda src: f"<img src='{src}' width='80'>")
     table_df['title'] = table_df.apply(lambda r: f"<a href='{r['url']}' target='_blank'>{r['title'][:70]}</a>", axis=1)
+    # Rename for display labels
+    table_df = table_df.rename(columns={
+        'thumbnail': 'Thumbnail',
+        'title': 'Title',
+        'view_count': 'Views',
+        'like_count': 'Likes',
+        'comment_count': 'Comments',
+        'engagement_rate': 'Engagement'
+    })
     # Render full-width table
     html_table = table_df[
-        ['Thumbnail','Title','View_count','Like_count','Comment_count','Engagement_rate']
+        ['Thumbnail','Title','Views','Likes','Comments','Engagement']
     ].to_html(escape=False, index=False, border=0)
     html_table = html_table.replace('<table', '<table style="width:100%; table-layout:fixed;"')
     st.markdown(f"<div style='width:100%'>{html_table}</div>", unsafe_allow_html=True)
