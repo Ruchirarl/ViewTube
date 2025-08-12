@@ -1379,18 +1379,28 @@ def display_results():
             """
             first_row = slots_df.iloc[0]
             best_slot = f"{first_row['slot']} (≈{first_row['expected_avg']:.1f})"
+        # Engagement leaders list (top 3 by engagement rate)
+        eng_items = ""
+        try:
+            eng_leaders = processed_data.nlargest(min(3, len(processed_data)), 'engagement_rate')[['title','engagement_rate','view_count']]
+            eng_items = "".join([
+                f"<li>{html.escape(str(r['title']))} — {float(r['engagement_rate']):.2%} engagement, {int(r['view_count']):,} views</li>"
+                for _, r in eng_leaders.iterrows()
+            ])
+        except Exception:
+            eng_items = ""
         now_str = datetime.now().strftime('%Y-%m-%d %H:%M')
         html_report = f"""
         <html><head><meta charset='utf-8'><title>ViewTube Report</title>
         <style>
-          body { font-family: Arial, sans-serif; color: #111; }
-          h1, h2, h3 { color: #cc0000; }
-          table { border-collapse: collapse; width: 100%; margin: 8px 0 18px; }
-          th { background:#111; color:#fff; text-align:center; padding:8px; }
-          td { padding:8px; }
-          tr:nth-child(even) td { background:#f7f7f7; }
-          .chip { display:inline-block; background:#ffe5e5; color:#a00000; padding:4px 10px; margin:4px 6px 0 0; border-radius:16px; font-weight:600; }
-          .kpi { display:inline-block; background:#fff0f0; border:1px solid #ffd0d0; border-radius:12px; padding:10px 14px; margin:6px 8px 6px 0; }
+          body {{ font-family: Arial, sans-serif; color: #111; }}
+          h1, h2, h3 {{ color: #cc0000; }}
+          table {{ border-collapse: collapse; width: 100%; margin: 8px 0 18px; }}
+          th {{ background:#111; color:#fff; text-align:center; padding:8px; }}
+          td {{ padding:8px; }}
+          tr:nth-child(even) td {{ background:#f7f7f7; }}
+          .chip {{ display:inline-block; background:#ffe5e5; color:#a00000; padding:4px 10px; margin:4px 6px 0 0; border-radius:16px; font-weight:600; }}
+          .kpi {{ display:inline-block; background:#fff0f0; border:1px solid #ffd0d0; border-radius:12px; padding:10px 14px; margin:6px 8px 6px 0; }}
         </style>
         </head>
         <body style='font-family:Arial, sans-serif;'>
