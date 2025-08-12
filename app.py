@@ -1043,7 +1043,10 @@ def display_results():
             day_names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
             top_slots['slot'] = top_slots.apply(lambda r: f"{day_names[int(r['published_day_of_week'])]} @ {int(r['published_hour']):02d}:00", axis=1)
             slots_disp = top_slots[['slot', score_col]].rename(columns={score_col: 'Expected Avg', 'slot': 'Slot'})
-            st.dataframe(slots_disp, use_container_width=True)
+            slots_html = slots_disp.to_html(index=False, border=0)
+            slots_html = slots_html.replace('<table', '<table style="width:100%; table-layout:fixed;"')
+            slots_html = slots_html.replace('<th>', '<th style="text-align:center; color: var(--text-primary); font-weight:700;">')
+            st.markdown(slots_html, unsafe_allow_html=True)
             # Save for report
             st.session_state.report_top_slots = top_slots[['slot', score_col]].rename(columns={score_col: 'expected_avg'})
     
@@ -1144,7 +1147,10 @@ def display_results():
                 'n': 'N', 'ngram': 'N-gram', 'count': 'Count', 'lift': 'Lift',
                 'estimated_uplift_%': 'Estimated Uplift %', 'opportunity_score': 'Opportunity Score'
             })
-            st.dataframe(kw_show, use_container_width=True)
+            kw_show_html = kw_show.to_html(index=False, border=0)
+            kw_show_html = kw_show_html.replace('<table', '<table style="width:100%; table-layout:fixed;"')
+            kw_show_html = kw_show_html.replace('<th>', '<th style="text-align:center; color: var(--text-primary); font-weight:700;">')
+            st.markdown(kw_show_html, unsafe_allow_html=True)
             st.markdown("#### n-gram table")
             kw_tbl = kw_df.assign(
                 avg_metric=lambda d: d["avg_metric"].round(1),
@@ -1154,7 +1160,10 @@ def display_results():
                 'ngram': 'N-gram', 'count': 'Count', 'avg_metric': 'Avg Metric',
                 'baseline_avg': 'Baseline Avg', 'lift': 'Lift'
             })
-            st.dataframe(kw_tbl, use_container_width=True)
+            kw_tbl_html = kw_tbl.to_html(index=False, border=0)
+            kw_tbl_html = kw_tbl_html.replace('<table', '<table style="width:100%; table-layout:fixed;"')
+            kw_tbl_html = kw_tbl_html.replace('<th>', '<th style="text-align:center; color: var(--text-primary); font-weight:700;">')
+            st.markdown(kw_tbl_html, unsafe_allow_html=True)
         else:
             st.info("No n-grams met the minimum support or baseline is zero.")
     except Exception as e:
