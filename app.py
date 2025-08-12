@@ -29,7 +29,7 @@ from dotenv import load_dotenv
 
 # Configure page with YouTube-inspired dark theme
 st.set_page_config(
-    page_title="ViewTube",
+    page_title="ViewTube - YouTube Video Analysis",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -75,7 +75,7 @@ st.markdown("""
     
     /* Header styling */
     .main-header {
-        font-size: 4rem;
+        font-size: 6rem;
         font-weight: 800;
         text-align: center;
         margin-bottom: 1.5rem;
@@ -96,6 +96,22 @@ st.markdown("""
     .analysis-text {
         color: var(--text-primary);
         font-weight: 600;
+    }
+
+    /* Force specific colors for brand wordmark */
+    .white-text {
+        color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+        background: none !important;
+        -webkit-background-clip: initial !important;
+        background-clip: initial !important;
+    }
+    .red-text {
+        color: #FF0000 !important;
+        -webkit-text-fill-color: #FF0000 !important;
+        background: none !important;
+        -webkit-background-clip: initial !important;
+        background-clip: initial !important;
     }
     
     .header-subtitle {
@@ -336,7 +352,7 @@ def main():
     """Main Streamlit application."""
     
     # Header
-    st.markdown('<h1 class="main-header"><span class="youtube-text">View</span><span class="analysis-text">Tube</span></h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header"><span class="white-text">View</span><span class="red-text">Tube</span></h1>', unsafe_allow_html=True)
     
     # Instruction line
     st.markdown('<p class="header-subtitle">Enter your search query below to analyze YouTube video performance</p>', unsafe_allow_html=True)
@@ -577,7 +593,7 @@ def display_results():
     
     # Key Metrics Cards at the top
     if show('Key'):
-        st.header("▲ Key Metrics")
+        st.header("🎯 Key Metrics")
     
     # First row of metrics
     col1, col2, col3, col4 = st.columns(4)
@@ -587,7 +603,7 @@ def display_results():
         <div class="metric-card">
             <div class="metric-number">{len(processed_data)}</div>
             <div class="metric-label">Total Videos</div>
-            <div class="metric-description">analyzed</div>
+            <div class="metric-description">Analyzed</div>
         </div>
         ''', unsafe_allow_html=True)
     
@@ -597,7 +613,7 @@ def display_results():
         <div class="metric-card">
             <div class="metric-number">{avg_views}</div>
             <div class="metric-label">Avg Views</div>
-            <div class="metric-description">per video</div>
+            <div class="metric-description">Per video</div>
         </div>
         ''', unsafe_allow_html=True)
     
@@ -607,7 +623,7 @@ def display_results():
         <div class="metric-card">
             <div class="metric-number">{avg_engagement}</div>
             <div class="metric-label">Avg Engagement</div>
-            <div class="metric-description">rate</div>
+            <div class="metric-description">Rate</div>
         </div>
         ''', unsafe_allow_html=True)
     
@@ -618,7 +634,7 @@ def display_results():
         <div class="metric-card">
             <div class="metric-number">{avg_duration}</div>
             <div class="metric-label">Avg Duration</div>
-            <div class="metric-description">per video</div>
+            <div class="metric-description">Per video</div>
         </div>
         ''', unsafe_allow_html=True)
     
@@ -634,7 +650,7 @@ def display_results():
         <div class="metric-card">
             <div class="metric-number">{max_views}</div>
             <div class="metric-label">Highest Views</div>
-            <div class="metric-description">single video</div>
+            <div class="metric-description">Single video</div>
         </div>
         ''', unsafe_allow_html=True)
     
@@ -644,7 +660,7 @@ def display_results():
         <div class="metric-card">
             <div class="metric-number">{max_engagement}</div>
             <div class="metric-label">Best Engagement</div>
-            <div class="metric-description">single video</div>
+            <div class="metric-description">Single video</div>
         </div>
         ''', unsafe_allow_html=True)
     
@@ -654,7 +670,7 @@ def display_results():
         <div class="metric-card">
             <div class="metric-number">{total_likes}</div>
             <div class="metric-label">Total Likes</div>
-            <div class="metric-description">all videos</div>
+            <div class="metric-description">All videos</div>
         </div>
         ''', unsafe_allow_html=True)
     
@@ -664,7 +680,7 @@ def display_results():
         <div class="metric-card">
             <div class="metric-number">{total_comments}</div>
             <div class="metric-label">Total Comments</div>
-            <div class="metric-description">all videos</div>
+            <div class="metric-description">All videos</div>
         </div>
         ''', unsafe_allow_html=True)
     
@@ -675,11 +691,11 @@ def display_results():
     
     # 1. Top Performing Videos (Most Important)
     if show('Top'):
-        st.header("■ Top Performing Videos")
+        st.header("🏆 Top Performing Videos")
         st.markdown("Here are the videos with the highest view counts:")
     
     # Top videos by views
-    top_videos = processed_data.nlargest(10, 'view_count')[['video_id','title', 'view_count', 'like_count', 'comment_count', 'engagement_rate']]
+    top_videos = processed_data.nlargest(10, 'view_count')[['Video_id','Title', 'View_count', 'Like_count', 'Comment_count', 'Engagement_rate']]
     
     # Format the data for display
     display_data = top_videos.copy()
@@ -695,10 +711,12 @@ def display_results():
     table_df = display_data.copy()
     table_df['thumbnail'] = table_df['thumbnail'].apply(lambda src: f"<img src='{src}' width='80'>")
     table_df['title'] = table_df.apply(lambda r: f"<a href='{r['url']}' target='_blank'>{r['title'][:70]}</a>", axis=1)
-    st.write(
-        table_df[['thumbnail','title','view_count','like_count','comment_count','engagement_rate']].to_html(escape=False, index=False),
-        unsafe_allow_html=True
-    )
+    # Render full-width table
+    html_table = table_df[
+        ['Thumbnail','Title','View_count','Like_count','Comment_count','Engagement_rate']
+    ].to_html(escape=False, index=False, border=0)
+    html_table = html_table.replace('<table', '<table style="width:100%; table-layout:fixed;"')
+    st.markdown(f"<div style='width:100%'>{html_table}</div>", unsafe_allow_html=True)
     
     st.markdown("---")
     
@@ -745,18 +763,18 @@ def display_results():
     col_lr, col_cr = st.columns(2)
 
     with col_lr:
-        st.subheader("↗ Like Rate Analysis")
+        st.subheader("👍 Like Rate Analysis")
         st.markdown("How many likes do videos get compared to their views?")
         fig = px.histogram(
             processed_data,
             x='like_rate',
             nbins=15,
             title="Distribution of Like Rates",
-            labels={'like_rate': 'Like Rate (%)', 'count': 'Number of Videos'},
-            color_discrete_sequence=['#FF0000'],
+            labels={'like_rate': 'Like Rate (%)', 'Count': 'Number of Videos'},
+            color_discrete_sequence=['#fa4343'],
             opacity=0.8
         )
-        fig.update_traces(hovertemplate='Like rate: %{x:.1%}<br>Count: %{y}<extra></extra>')
+        fig.update_traces(hovertemplate='Like Rate: %{x:.1%}<br>Count: %{y}<extra></extra>')
         fig.update_layout(
             plot_bgcolor='rgba(0,0,0,0)',
             paper_bgcolor='rgba(0,0,0,0)',
@@ -771,18 +789,18 @@ def display_results():
         st.plotly_chart(fig, use_container_width=True, key=next_plot_key())
 
     with col_cr:
-        st.subheader("◆ Comment Rate Analysis")
+        st.subheader("💬 Comment Rate Analysis")
         st.markdown("How many comments do videos get compared to their views?")
         fig = px.histogram(
             processed_data,
             x='comment_rate',
             nbins=15,
             title="Distribution of Comment Rates",
-            labels={'comment_rate': 'Comment Rate (%)', 'count': 'Number of Videos'},
-            color_discrete_sequence=['#FF4444'],
+            labels={'comment_rate': 'Comment Rate (%)', 'Count': 'Number of Videos'},
+            color_discrete_sequence=['#fa4343'],
             opacity=0.8
         )
-        fig.update_traces(hovertemplate='Comment rate: %{x:.1%}<br>Count: %{y}<extra></extra>')
+        fig.update_traces(hovertemplate='Comment Rate: %{x:.1%}<br>Count: %{y}<extra></extra>')
         fig.update_layout(
             plot_bgcolor='rgba(0,0,0,0)',
             paper_bgcolor='rgba(0,0,0,0)',
@@ -816,7 +834,7 @@ def display_results():
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("● View Distribution")
+        st.subheader("👀 View Distribution")
         st.markdown("How many views do most videos get?")
         
         # Ensure numeric
@@ -855,7 +873,7 @@ def display_results():
                     nbins=30,
                     title="Distribution of Video Views",
                     labels={'view_count': 'Number of Views', 'count': 'Number of Videos'},
-                    color_discrete_sequence=['#FF6666'],
+                    color_discrete_sequence=['#fa4343'],
                     opacity=0.85
                 )
                 fig.update_traces(hovertemplate='Views: %{x:,}<br>Count: %{y}<extra></extra>')
@@ -884,7 +902,7 @@ def display_results():
             title="Views vs Engagement Rate",
             labels={'view_count': 'Number of Views', 'engagement_rate': 'Engagement Rate (%)'},
             color='engagement_rate',
-            color_continuous_scale='Viridis',
+            color_continuous_scale='Reds',
             size='like_count',
             size_max=30
         )
@@ -906,13 +924,13 @@ def display_results():
     
     # 4. Time Analysis (Fourth Most Important)
     if show('Time'):
-        st.header("◯ Time Analysis")
+        st.header("⏰ Time Analysis")
         st.markdown("How do timing factors affect video performance?")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("◊ Video Duration")
+        st.subheader("🎥 Video Duration")
         st.markdown("How long are the videos?")
         
         # Convert duration_seconds to minutes for visualization
@@ -925,7 +943,7 @@ def display_results():
             x='duration_minutes',
             title="Video Duration Distribution (Box)",
             labels={'duration_minutes': 'Duration (minutes)'},
-            color_discrete_sequence=['#FF0000']
+            color_discrete_sequence=['#fa4343']
         )
         fig.update_traces(hovertemplate='Duration: %{x:.1f} min<extra></extra>')
         fig.update_layout(
@@ -942,7 +960,7 @@ def display_results():
         st.plotly_chart(fig, use_container_width=True)
     
     with col2:
-        st.subheader("♦ Duration vs Views")
+        st.subheader("⌛ Duration vs Views")
         st.markdown("Do longer videos get more views?")
         
         # Scatter (keep) with improved tooltip
@@ -954,7 +972,7 @@ def display_results():
             title="Duration vs Views",
             labels={'duration_minutes': 'Duration (minutes)', 'view_count': 'Number of Views'},
             color='engagement_rate',
-            color_continuous_scale='Viridis',
+            color_continuous_scale='Reds',
             size='like_count',
             size_max=22
         )
@@ -975,7 +993,7 @@ def display_results():
     # Upload time analysis (if available)
     if 'published_hour' in processed_data.columns:
         st.markdown("---")
-        st.subheader("◉ Upload Time Analysis")
+        st.subheader("📅 Upload Time Analysis")
         st.markdown("When are videos typically uploaded?")
         
         upload_hour_counts = processed_data['published_hour'].value_counts().sort_index()
@@ -987,7 +1005,7 @@ def display_results():
             title="Videos Uploaded by Hour (24-hour clock)",
             labels={'x': 'Hour of Day', 'y': 'Number of Videos'},
             color=upload_hour_counts.values,
-            color_continuous_scale='Viridis'
+            color_continuous_scale='Reds'
         )
         fig.update_layout(
             plot_bgcolor='rgba(0,0,0,0)',
@@ -1003,7 +1021,7 @@ def display_results():
 
         # Content Calendar: Recommend top publish slots (hour, weekday)
         if 'published_day_of_week' in processed_data.columns:
-            st.subheader("🗓️ Recommended Publish Windows")
+            st.subheader("🕒 Recommended Publish Windows")
             # Score by average views/day if available, else by views
             score_col = 'views_per_day' if 'views_per_day' in processed_data.columns else 'view_count'
             slot_scores = processed_data.groupby(['published_day_of_week','published_hour'])[score_col].mean().reset_index()
@@ -1020,7 +1038,7 @@ def display_results():
     # 5. Keyword Analysis (N-gram lift)
     if show('Keywords'):
         st.markdown("---")
-        st.header("◆ Keyword Analysis")
+        st.header("🔍 Keyword Analysis")
         st.markdown("Which words or phrases in titles/descriptions/tags associate with higher views per day?")
 
     with st.expander("Configure keyword analysis"):
@@ -1081,7 +1099,7 @@ def display_results():
                     title="Top n-grams by lift on views/day",
                     labels={"lift": "Lift vs baseline", "ngram": "n-gram"},
                     color="n" if ("n" in kw_df.columns) else "lift",
-                    color_continuous_scale="Viridis" if ("n" not in kw_df.columns) else None,
+                    color_continuous_scale="Reds" if ("n" not in kw_df.columns) else None,
                 )
                 fig.update_layout(
                     plot_bgcolor='rgba(0,0,0,0)',
@@ -1127,7 +1145,7 @@ def display_results():
     # 6. Sentiment Analysis Section
     if show('Sentiment'):
         st.markdown("---")
-        st.header("▲ Comment Sentiment Analysis")
+        st.header("💬 Comment Sentiment Analysis")
         st.markdown("What do viewers think about these videos?")
     
     if 'comments_data' in st.session_state:
@@ -1136,7 +1154,7 @@ def display_results():
         col1, col2 = st.columns(2)
         
         with col1:
-            st.subheader("◇ Sentiment Distribution")
+            st.subheader("📈 Sentiment Distribution")
             st.markdown("How positive or negative are the comments?")
             
             if 'overall_sentiment' in comments_data.columns:
@@ -1147,7 +1165,7 @@ def display_results():
                     values=sentiment_counts.values,
                     names=sentiment_counts.index,
                     title="Comment Sentiment Distribution",
-                    color_discrete_sequence=['#FF0000', '#FF4444', '#CC0000']  # YouTube red, light red, dark red
+                    color_discrete_sequence=['#ff0000', '#fa4343', '#ff8585']  # YouTube red, light red, dark red
                 )
                 fig.update_layout(
                     plot_bgcolor='rgba(0,0,0,0)',
@@ -1164,7 +1182,7 @@ def display_results():
                 st.warning("Sentiment categories not available.")
         
         with col2:
-            st.subheader("◆ Sentiment Scores")
+            st.subheader("💯 Sentiment Scores")
             st.markdown("Distribution of sentiment scores")
             
             if 'vader_compound' in comments_data.columns:
@@ -1174,7 +1192,7 @@ def display_results():
                     nbins=20,
                     title="Sentiment Score Distribution",
                     labels={'vader_compound': 'Sentiment Score', 'count': 'Number of Comments'},
-                    color_discrete_sequence=['#FF6666'],  # YouTube red
+                    color_discrete_sequence=['#ff0000'],  # YouTube red
                     opacity=0.8
                 )
                 fig.update_layout(
@@ -1194,7 +1212,7 @@ def display_results():
         # Sentiment by video
         if 'video_title' in comments_data.columns and 'vader_compound' in comments_data.columns:
             st.markdown("---")
-            st.subheader("◐ Sentiment by Video")
+            st.subheader("▶️ Sentiment by Video")
             st.markdown("Which videos have the most positive comments?")
             
             video_sentiment = comments_data.groupby('video_title')['vader_compound'].mean().sort_values(ascending=False)
@@ -1207,7 +1225,7 @@ def display_results():
                 title="Average Sentiment by Video",
                 labels={'x': 'Average Sentiment Score', 'y': 'Video Title'},
                 color=video_sentiment.values,
-                color_continuous_scale='Viridis'
+                color_continuous_scale='Reds'
             )
             fig.update_layout(
                 plot_bgcolor='rgba(0,0,0,0)',
