@@ -1299,12 +1299,16 @@ def display_results():
     st.subheader("⬇ Download Report (HTML)")
     def build_html_report():
         import html
+        from datetime import datetime
         q = html.escape(str(st.session_state.get('search_query', '')))
         mr = st.session_state.get('max_results', 0)
         total_videos = len(processed_data)
         avg_views = processed_data['view_count'].mean()
         avg_eng = processed_data['engagement_rate'].mean()
         avg_dur_min = processed_data['duration_seconds'].mean() / 60 if 'duration_seconds' in processed_data.columns else None
+        total_views = int(processed_data['view_count'].sum())
+        total_likes = int(processed_data['like_count'].sum()) if 'like_count' in processed_data.columns else 0
+        total_comments = int(processed_data['comment_count'].sum()) if 'comment_count' in processed_data.columns else 0
         # Prepare top table with thumbnails and links
         top_table = processed_data.nlargest(10, 'view_count')[['video_id','title','view_count','like_count','comment_count','engagement_rate']].copy()
         def fmt_num(x):
@@ -1329,8 +1333,11 @@ def display_results():
         ])
         # Category performance summary
         cat_html = ""
+        best_category = None
         if 'category' in processed_data.columns:
             cat_perf = processed_data.groupby('category')['view_count'].mean().sort_values(ascending=False).head(8)
+            if len(cat_perf):
+                best_category = str(cat_perf.index[0])
             cat_rows = "".join([f"<tr><td>{html.escape(str(k))}</td><td style='text-align:right'>{v:,.0f}</td></tr>" for k, v in cat_perf.items()])
             cat_html = f"""
             <h3>Category Performance (Avg Views)</h3>
@@ -1339,13 +1346,10 @@ def display_results():
               {cat_rows}
             </table>
             """
-        # View percentiles
-        import numpy as _np
-        p50 = float(_np.percentile(processed_data['view_count'], 50)) if len(processed_data) else 0
-        p90 = float(_np.percentile(processed_data['view_count'], 90)) if len(processed_data) else 0
-        p99 = float(_np.percentile(processed_data['view_count'], 99)) if len(processed_data) else 0
+        # View percentiles (removed per request)
         kw_df = st.session_state.get('report_kw', None)
         kw_html = ""
+        keyword_badges = ""
         if kw_df is not None and not kw_df.empty:
             kw_part = kw_df.sort_values(['lift','count'], ascending=[False,False]).head(15)[['ngram','count','lift']]
             kw_html_rows = "".join([
@@ -1359,8 +1363,11 @@ def display_results():
               {kw_html_rows}
             </table>
             """
+            top_badges = kw_df.sort_values(['lift','count'], ascending=[False, False]).head(8)['ngram'].tolist()
+            keyword_badges = " ".join([f"<span class='chip'>{html.escape(str(t))}</span>" for t in top_badges])
         slots_df = st.session_state.get('report_top_slots', None)
         slots_html = ""
+        best_slot = None
         if slots_df is not None and not slots_df.empty:
             slot_rows = "".join([f"<tr><td>{html.escape(str(r['slot']))}</td><td>{r['expected_avg']:.1f}</td></tr>" for _, r in slots_df.iterrows()])
             slots_html = f"""
@@ -1370,17 +1377,42 @@ def display_results():
               {slot_rows}
             </table>
             """
+            first_row = slots_df.iloc[0]
+            best_slot = f"{first_row['slot']} (≈{first_row['expected_avg']:.1f})"
+        now_str = datetime.now().strftime('%Y-%m-%d %H:%M')
         html_report = f"""
-        <html><head><meta charset='utf-8'><title>ViewTube Report</title></head>
+        <html><head><meta charset='utf-8'><title>ViewTube Report</title>
+        <style>
+          body { font-family: Arial, sans-serif; color: #111; }
+          h1, h2, h3 { color: #cc0000; }
+          table { border-collapse: collapse; width: 100%; margin: 8px 0 18px; }
+          th { background:#111; color:#fff; text-align:center; padding:8px; }
+          td { padding:8px; }
+          tr:nth-child(even) td { background:#f7f7f7; }
+          .chip { display:inline-block; background:#ffe5e5; color:#a00000; padding:4px 10px; margin:4px 6px 0 0; border-radius:16px; font-weight:600; }
+          .kpi { display:inline-block; background:#fff0f0; border:1px solid #ffd0d0; border-radius:12px; padding:10px 14px; margin:6px 8px 6px 0; }
+        </style>
+        </head>
         <body style='font-family:Arial, sans-serif;'>
           <h1>ViewTube Report</h1>
-          <p><b>Query:</b> {q} &nbsp; <b>Videos requested:</b> {mr} &nbsp; <b>Analyzed:</b> {total_videos}</p>
+          <p><b>Query:</b> {q} &nbsp; <b>Videos requested:</b> {mr} &nbsp; <b>Analyzed:</b> {total_videos} &nbsp; <b>Generated:</b> {now_str}</p>
+          <div>
+            <span class='kpi'><b>Total views</b>: {total_views:,}</span>
+            <span class='kpi'><b>Total likes</b>: {total_likes:,}</span>
+            <span class='kpi'><b>Total comments</b>: {total_comments:,}</span>
+          </div>
           <h2>Key Metrics</h2>
           <ul>
             <li>Average views: {avg_views:,.0f}</li>
             <li>Average engagement: {avg_eng:.2%}</li>
             <li>Average duration: {avg_dur_min:.1f} minutes</li>
-            <li>View percentiles — P50: {p50:,.0f}, P90: {p90:,.0f}, P99: {p99:,.0f}</li>
+          </ul>
+          <h2>Highlights</h2>
+          <ul>
+            {f"<li><b>Best category</b>: {html.escape(str(best_category))}</li>" if best_category else ""}
+            {f"<li><b>Best publish window</b>: {html.escape(str(best_slot))}</li>" if best_slot else ""}
+            {f"<li><b>Top keywords</b>: {keyword_badges}</li>" if keyword_badges else ""}
+            {f"<li><b>Engagement leaders</b>:<ul>{eng_items}</ul></li>" if eng_items else ""}
           </ul>
           <h2>Top Performing Videos</h2>
           <table border='1' cellpadding='6' cellspacing='0'>
