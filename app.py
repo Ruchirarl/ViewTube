@@ -253,22 +253,23 @@ st.markdown("""
     
     /* Button styling */
     .stButton > button {
-        background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-        color: var(--text-primary);
-        border: none;
-        border-radius: 15px;
-        padding: 1rem 2.5rem;
-        font-weight: 600;
-        font-size: 1.1rem;
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
-        letter-spacing: 0.025em;
+        background: linear-gradient(135deg, #ff1a1a, #cc0000);
+        color: #ffffff;
+        border: 1px solid rgba(255,255,255,0.15);
+        border-radius: 14px;
+        padding: 0.9rem 2.25rem;
+        font-weight: 700;
+        font-size: 1.05rem;
+        transition: all 0.25s ease;
+        box-shadow: 0 10px 24px rgba(255, 0, 0, 0.25), inset 0 1px 0 rgba(255,255,255,0.15);
+        letter-spacing: 0.02em;
+        backdrop-filter: saturate(120%) blur(2px);
     }
     
     .stButton > button:hover {
-        transform: translateY(-3px) scale(1.02);
-        box-shadow: 0 15px 35px rgba(99, 102, 241, 0.4);
-        background: linear-gradient(135deg, var(--gradient-end), var(--gradient-start));
+        transform: translateY(-2px) scale(1.01);
+        box-shadow: 0 14px 36px rgba(255, 0, 0, 0.35), inset 0 1px 0 rgba(255,255,255,0.25);
+        filter: brightness(1.02);
     }
     
     /* Input styling */
@@ -360,15 +361,8 @@ def main():
     # Instruction line
     st.markdown('<p class="header-subtitle">Enter your search query below to analyze YouTube video performance</p>', unsafe_allow_html=True)
     
-    # API Key input (env or manual)
-    api_key_default = st.secrets.get("YOUTUBE_API_KEY", os.getenv("YOUTUBE_API_KEY", ""))
-    api_key = st.text_input(
-        "YouTube API Key",
-        value=api_key_default,
-        type="password",
-        help="Set YOUTUBE_API_KEY in a .env file to avoid entering it each time",
-        placeholder="Enter your API key"
-    )
+    # API key from secrets (preferred) or environment for local runs
+    api_key = st.secrets.get("YOUTUBE_API_KEY", os.getenv("YOUTUBE_API_KEY", ""))
 
     # Create columns for horizontal layout
     col1, col2 = st.columns(2)
@@ -397,7 +391,7 @@ def main():
     with col2:
         if st.button("Collect & Analyze Data", type="primary", use_container_width=True):
             if not api_key:
-                st.error("🔑 Please provide a YouTube API key (set YOUTUBE_API_KEY in .env or enter above).")
+                st.error("🔑 Missing API key. Set YOUTUBE_API_KEY in Streamlit Secrets.")
                 st.stop()
 
             with st.spinner("Collecting and analyzing data..."):
@@ -1311,7 +1305,8 @@ def display_results():
         avg_views = processed_data['view_count'].mean()
         avg_eng = processed_data['engagement_rate'].mean()
         avg_dur_min = processed_data['duration_seconds'].mean() / 60 if 'duration_seconds' in processed_data.columns else None
-        top_table = processed_data.nlargest(10, 'view_count')[['title','view_count','like_count','comment_count','engagement_rate']].copy()
+        # Prepare top table with thumbnails and links
+        top_table = processed_data.nlargest(10, 'view_count')[['video_id','title','view_count','like_count','comment_count','engagement_rate']].copy()
         def fmt_num(x):
             try:
                 return f"{int(x):,}"
@@ -1322,9 +1317,33 @@ def display_results():
         top_table['comment_count'] = top_table['comment_count'].apply(fmt_num)
         top_table['engagement_rate'] = top_table['engagement_rate'].apply(lambda x: f"{x:.2%}")
         top_html_rows = "".join([
-            f"<tr><td>{html.escape(str(r['title']))}</td><td>{r['view_count']}</td><td>{r['like_count']}</td><td>{r['comment_count']}</td><td>{r['engagement_rate']}</td></tr>"
+            f"<tr>"
+            f"<td style='text-align:center'><img src='https://img.youtube.com/vi/{html.escape(str(r['video_id']))}/hqdefault.jpg' width='80'/></td>"
+            f"<td><a href='https://www.youtube.com/watch?v={html.escape(str(r['video_id']))}' target='_blank'>{html.escape(str(r['title']))}</a></td>"
+            f"<td style='text-align:right'>{r['view_count']}</td>"
+            f"<td style='text-align:right'>{r['like_count']}</td>"
+            f"<td style='text-align:right'>{r['comment_count']}</td>"
+            f"<td style='text-align:right'>{r['engagement_rate']}</td>"
+            f"</tr>"
             for _, r in top_table.iterrows()
         ])
+        # Category performance summary
+        cat_html = ""
+        if 'category' in processed_data.columns:
+            cat_perf = processed_data.groupby('category')['view_count'].mean().sort_values(ascending=False).head(8)
+            cat_rows = "".join([f"<tr><td>{html.escape(str(k))}</td><td style='text-align:right'>{v:,.0f}</td></tr>" for k, v in cat_perf.items()])
+            cat_html = f"""
+            <h3>Category Performance (Avg Views)</h3>
+            <table border='1' cellpadding='6' cellspacing='0'>
+              <tr><th>Category</th><th>Average Views</th></tr>
+              {cat_rows}
+            </table>
+            """
+        # View percentiles
+        import numpy as _np
+        p50 = float(_np.percentile(processed_data['view_count'], 50)) if len(processed_data) else 0
+        p90 = float(_np.percentile(processed_data['view_count'], 90)) if len(processed_data) else 0
+        p99 = float(_np.percentile(processed_data['view_count'], 99)) if len(processed_data) else 0
         kw_df = st.session_state.get('report_kw', None)
         kw_html = ""
         if kw_df is not None and not kw_df.empty:
@@ -1361,12 +1380,14 @@ def display_results():
             <li>Average views: {avg_views:,.0f}</li>
             <li>Average engagement: {avg_eng:.2%}</li>
             <li>Average duration: {avg_dur_min:.1f} minutes</li>
+            <li>View percentiles — P50: {p50:,.0f}, P90: {p90:,.0f}, P99: {p99:,.0f}</li>
           </ul>
           <h2>Top Performing Videos</h2>
           <table border='1' cellpadding='6' cellspacing='0'>
-            <tr><th>Title</th><th>Views</th><th>Likes</th><th>Comments</th><th>Engagement</th></tr>
+            <tr><th>Thumb</th><th>Title</th><th>Views</th><th>Likes</th><th>Comments</th><th>Engagement</th></tr>
             {top_html_rows}
           </table>
+          {cat_html}
           {kw_html}
           {slots_html}
           <p style='margin-top:24px;'>Generated by ViewTube.</p>
@@ -1376,7 +1397,7 @@ def display_results():
 
     report_html = build_html_report()
     st.download_button(
-        label="Download HTML Report",
+        label="⬇ Download Report (HTML)",
         data=report_html,
         file_name="viewtube_report.html",
         mime="text/html"
