@@ -728,6 +728,7 @@ def display_results():
         ['Thumbnail','Title','Views','Likes','Comments','Engagement']
     ].to_html(escape=False, index=False, border=0)
     html_table = html_table.replace('<table', '<table style="width:100%; table-layout:fixed;"')
+    html_table = html_table.replace('<th>', '<th style="text-align:center">')
     st.markdown(f"<div style='width:100%'>{html_table}</div>", unsafe_allow_html=True)
     
     st.markdown("---")
@@ -1111,8 +1112,8 @@ def display_results():
                     orientation="h",
                     title="Top n-grams by lift on views/day",
                     labels={"lift": "Lift vs baseline", "ngram": "n-gram"},
-                    color="n" if ("n" in kw_df.columns) else "lift",
-                    color_continuous_scale="Reds" if ("n" not in kw_df.columns) else None,
+                    color="lift",
+                    color_continuous_scale="Reds",
                 )
                 fig.update_layout(
                     plot_bgcolor='rgba(0,0,0,0)',
