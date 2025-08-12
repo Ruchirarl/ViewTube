@@ -15,8 +15,9 @@ An interactive Streamlit dashboard that collects, analyzes, and visualizes YouTu
 
 <p align="center">
   <img width="1896" height="869" alt="Dashboard Preview" src="https://github.com/user-attachments/assets/f258e6a9-5865-4ec6-96b1-07394412dc77" />
-  <br/>
-  <a href="[https://viewtube.streamlit.app/]" target="_blank"><b>▶ Open the live dashboard</b></a>
+</p>
+<p align="center">
+  <a href="https://viewtube.streamlit.app/"><strong>▶ Open the Live Dashboard</strong></a>
 </p>
 
 ## Sample Report
